@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculadora Web</title>
+
+  <style>
+    :root{
+      --bg:#0b1220;--card:#121a2b;--muted:#8ca3c7;--text:#e7eefc;
+      --accent:#4e9eff;--accent-2:#6cf0c2;--danger:#ff6b6b;
+      --ring:#2a3a5c;--shadow:0 10px 30px rgba(0,0,0,.35);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:system-ui;background:radial-gradient(1200px 800px at 10% 10%,#111a2a 0%,#0b1220 40%,#090f1a 100%);
+      color:var(--text);display:grid;place-items:center;padding:24px
+    }
+    .wrap{width:min(920px,100%)}
+    .card{
+      background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:var(--radius);box-shadow:var(--shadow)
+    }
+    header,footer{padding:20px;border-bottom:1px solid rgba(255,255,255,.08)}
+    footer{border-top:1px solid rgba(255,255,255,.08);border-bottom:none}
+    h1{margin:0;font-size:22px}
+    .muted{color:var(--muted);font-size:14px}
+
+    .grid{display:grid;grid-template-columns:1.1fr .9fr}
+    @media(max-width:860px){.grid{grid-template-columns:1fr}}
+
+    .panel{padding:22px}
+    .left{border-right:1px solid rgba(255,255,255,.08)}
+    @media(max-width:860px){.left{border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}}
+
+    .group{display:grid;gap:12px;margin-bottom:16px}
+    label{font-size:13px;color:var(--muted)}
+
+    .field,.select{
+      background:#0e1727;border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;padding:10px 12px
+    }
+    input,select{
+      width:100%;background:transparent;border:none;color:var(--text);font-size:16px;outline:none
+    }
+    option{color:#000}
+
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .btn{
+      padding:12px 16px;border-radius:14px;border:none;cursor:pointer;
+      background:linear-gradient(180deg,#3a70ff,#2e5be0);color:#fff;font-weight:600
+    }
+    .btn.secondary{background:#0e1727;border:1px solid rgba(255,255,255,.1)}
+    .btn.ghost{background:transparent;border:1px dashed rgba(255,255,255,.2)}
+
+    .result{
+      margin-top:16px;background:#0e1727;border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;padding:16px
+    }
+    .expr{font-size:13px;color:var(--muted)}
+    .val{font-size:28px;margin-top:4px}
+    .error{color:var(--danger);margin-top:8px}
+
+  </style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+
+<header>
+  <h1>Calculadora Web</h1>
+  <div class="muted">Inclui operações matemáticas e cálculo de juros</div>
+</header>
+
+<div class="grid">
+<section class="panel left">
+
+  <div class="group">
+    <label>Operação</label>
+    <div class="select">
+      <select id="op">
+        <option value="+">Soma</option>
+        <option value="-">Subtração</option>
+        <option value="*">Multiplicação</option>
+        <option value="/">Divisão</option>
+        <option value="%">Módulo</option>
+        <option value="^">Potência</option>
+        <option value="sqrt">Raiz Quadrada</option>
+        <option value="js">Juros Simples</option>
+        <option value="jc">Juros Compostos</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="group" id="ga">
+    <label id="label-a">Valor A</label>
+    <div class="field"><input id="a"></div>
+  </div>
+
+  <div class="group" id="gb">
+    <label id="label-b">Valor B</label>
+    <div class="field"><input id="b"></div>
+  </div>
+
+  <div class="group" id="gc" hidden>
+    <label>Capital</label>
+    <div class="field"><input id="capital"></div>
+
+    <label>Taxa (%)</label>
+    <div class="field"><input id="taxa"></div>
+
+    <label>Tempo (em dias)</label>
+    <div class="field"><input id="tempo"></div>
+  </div>
+
+  <div class="row">
+    <button class="btn" id="calc">Calcular</button>
+    <button class="btn secondary" id="clear">Limpar</button>
+  </div>
+
+  <div class="result">
+    <div class="expr" id="expr">Expressão</div>
+    <div class="val" id="result">—</div>
+    <div class="error" id="error"></div>
+  </div>
+
+</section>
+
+<section class="panel">
+  <div class="muted">
+    • Juros simples: M = C + (C × i × t)<br>
+    • Juros compostos: M = C × (1 + i)ᵗ
+  </div>
+</section>
+</div>
+
+<footer>
+  <div class="muted">Por Lucas · Portfólio</div>
+</footer>
+
+</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const op = $('#op'), err=$('#error'), out=$('#result'), expr=$('#expr');
+
+function num(v){return Number(v.replace(',','.'))}
+
+function toggle(){
+  const isJuros = op.value==='js'||op.value==='jc';
+  $('#ga').hidden = isJuros;
+  $('#gb').hidden = isJuros || op.value==='sqrt';
+  $('#gc').hidden = !isJuros;
+}
+
+function calc(){
+  err.textContent='';
+  let r;
+
+  if(op.value==='js'||op.value==='jc'){
+    const c=num($('#capital').value),
+          i=num($('#taxa').value)/100,
+          t=num($('#tempo').value);
+
+    if([c,i,t].some(isNaN)) return err.textContent='Dados inválidos';
+
+    r = op.value==='js'
+      ? c + (c*i*t)
+      : c * Math.pow(1+i,t);
+
+    expr.textContent = op.value==='js' ? 'Juros Simples' : 'Juros Compostos';
+  }
+  else{
+    const a=num($('#a').value), b=num($('#b').value);
+    if(isNaN(a)) return err.textContent='Valor A inválido';
+
+    switch(op.value){
+      case '+': r=a+b; break;
+      case '-': r=a-b; break;
+      case '*': r=a*b; break;
+      case '/': if(b===0)return err.textContent='Divisão por zero'; r=a/b; break;
+      case '%': r=a%b; break;
+      case '^': r=Math.pow(a,b); break;
+      case 'sqrt': if(a<0)return err.textContent='Raiz inválida'; r=Math.sqrt(a); break;
+    }
+    expr.textContent = op.value;
+  }
+
+  out.textContent = r.toLocaleString('pt-BR',{maximumFractionDigits:10});
+}
+
+$('#calc').onclick=calc;
+$('#clear').onclick=()=>location.reload();
+op.onchange=toggle;
+toggle();
+</script>
+
+</body>
+</html>
